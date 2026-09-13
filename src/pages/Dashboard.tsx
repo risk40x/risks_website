@@ -22,6 +22,9 @@ import {
   Link,
   Search,
   X,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -45,6 +48,7 @@ export default function Dashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [activeAction, setActiveAction] = useState<AccountAction>(null);
 
@@ -101,6 +105,12 @@ export default function Dashboard() {
         item.category.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
+
+  const handleSearchEnter = () => {
+    if (filteredNavItems.length > 0) {
+      handleSearchSelect(filteredNavItems[0].key);
+    }
+  };
 
   const handleSearchSelect = (key: SidebarView) => {
     if (key === 'account') {
@@ -658,6 +668,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
       {/* Sidebar */}
+      {sidebarOpen && (
       <aside className="w-64 shrink-0 bg-slate-950/80 border-r border-yellow-500/15 flex flex-col">
         {/* Header */}
         <div className="px-5 py-5 border-b border-yellow-500/15">
@@ -754,12 +765,20 @@ export default function Dashboard() {
           </button>
         </div>
       </aside>
+      )}
 
       {/* Right side: header + main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top header bar */}
         <header className="h-16 shrink-0 bg-slate-950/80 border-b border-yellow-500/15 flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+            >
+              {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+            </button>
             <span className="text-yellow-400 font-semibold text-sm tracking-wide">RISK Security Dashboard</span>
             <button
               onClick={() => {
@@ -780,6 +799,7 @@ export default function Dashboard() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearchEnter(); }}
                 placeholder="Search navigation..."
                 className="w-48 sm:w-64 px-3 py-1.5 rounded-lg bg-slate-950/60 border border-yellow-500/20 text-yellow-50 placeholder-gray-600 text-sm focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500/50 transition-all"
               />
@@ -800,7 +820,7 @@ export default function Dashboard() {
 
         {/* Search results dropdown */}
         {searchOpen && searchQuery.trim() && (
-          <div className="absolute top-16 left-64 right-0 z-50 bg-slate-950/95 border-b border-yellow-500/20 px-6 py-3 shadow-xl">
+          <div className={`absolute top-16 ${sidebarOpen ? 'left-64' : 'left-0'} right-0 z-50 bg-slate-950/95 border-b border-yellow-500/20 px-6 py-3 shadow-xl`}>
             {filteredNavItems.length > 0 ? (
               <div className="space-y-1 max-h-64 overflow-y-auto">
                 {filteredNavItems.map((item) => {
