@@ -20,6 +20,8 @@ import {
   Camera,
   Upload,
   Link,
+  Search,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -41,6 +43,9 @@ export default function Dashboard() {
   const [view, setView] = useState<SidebarView>('welcome');
   const [vulnOpen, setVulnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [activeAction, setActiveAction] = useState<AccountAction>(null);
 
   // Profile state
@@ -81,6 +86,34 @@ export default function Dashboard() {
       }
     })();
   }, [user]);
+
+  // All searchable nav items
+  const allNavItems = [
+    { key: 'welcome' as const, label: 'Dashboard', icon: User, category: 'Main' },
+    { key: 'profile' as const, label: 'Profile', icon: User, category: 'Main' },
+    { key: 'account' as const, label: 'Account', icon: User, category: 'Settings' },
+    ...vulnItems.map((v) => ({ key: v.key, label: v.label, icon: v.icon, category: 'Vulnerabilities' })),
+  ];
+
+  const filteredNavItems = searchQuery.trim()
+    ? allNavItems.filter((item) =>
+        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  const handleSearchSelect = (key: SidebarView) => {
+    if (key === 'account') {
+      handleAccountClick();
+    } else if (vulnItems.some((v) => v.key === key)) {
+      setVulnOpen(true);
+      setView(key);
+    } else {
+      setView(key);
+    }
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -726,8 +759,31 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top header bar */}
         <header className="h-16 shrink-0 bg-slate-950/80 border-b border-yellow-500/15 flex items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <span className="text-yellow-400 font-semibold text-sm tracking-wide">RISK Security Dashboard</span>
+            <button
+              onClick={() => {
+                setSearchOpen(!searchOpen);
+                if (!searchOpen) {
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                } else {
+                  setSearchQuery('');
+                }
+              }}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+            >
+              {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+            {searchOpen && (
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search navigation..."
+                className="w-48 sm:w-64 px-3 py-1.5 rounded-lg bg-slate-950/60 border border-yellow-500/20 text-yellow-50 placeholder-gray-600 text-sm focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500/50 transition-all"
+              />
+            )}
           </div>
           <button
             onClick={() => { setView('profile'); refreshProfile(); }}
@@ -741,6 +797,32 @@ export default function Dashboard() {
             </div>
           </button>
         </header>
+
+        {/* Search results dropdown */}
+        {searchOpen && searchQuery.trim() && (
+          <div className="absolute top-16 left-64 right-0 z-50 bg-slate-950/95 border-b border-yellow-500/20 px-6 py-3 shadow-xl">
+            {filteredNavItems.length > 0 ? (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {filteredNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => handleSearchSelect(item.key)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-300 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                    >
+                      <Icon className="w-4 h-4 text-yellow-400" />
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-xs text-gray-600 ml-auto">{item.category}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 px-4 py-3">No results found for "{searchQuery}"</p>
+            )}
+          </div>
+        )}
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
